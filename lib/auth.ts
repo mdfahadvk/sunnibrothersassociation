@@ -3,6 +3,12 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 
+type AppRole = "ADMIN" | "TEACHER" | "STUDENT";
+
+function isAppRole(value: unknown): value is AppRole {
+  return value === "ADMIN" || value === "TEACHER" || value === "STUDENT";
+}
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   providers: [
@@ -31,14 +37,19 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role;
+        const role = (user as { role?: unknown }).role;
+        if (isAppRole(role)) {
+          token.role = role;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "ADMIN" | "TEACHER" | "STUDENT";
+        if (isAppRole(token.role)) {
+          session.user.role = token.role;
+        }
       }
       return session;
     },
